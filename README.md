@@ -1,4 +1,4 @@
-# Databricks DevOps with Azure DevOps 
+# DevOps practices for Databricks with Azure DevOps 
 
 A repository for explaining DevOps for Databricks.
 
