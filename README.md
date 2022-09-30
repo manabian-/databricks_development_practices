@@ -1,6 +1,6 @@
 # Databricks DevOps with Azure DevOps 
 
-A repository for explaining How to implement CI/CD on Databricks.
+A repository for explaining DevOps for Databricks.
 
 DevOps を考慮した Databricks の開発方法を説明。
 
