@@ -1,0 +1,8 @@
+name: dbconnect_10_4
+channels:
+  - defaults
+dependencies:
+  - python=3.8.*
+  - pip
+  - pip:
+    - -r requirements.txt

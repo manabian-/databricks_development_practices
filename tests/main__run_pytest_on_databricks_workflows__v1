@@ -1,0 +1,200 @@
+"""下記が引数と渡させれることを想定しており、8個目以降の引数は Pytest の引数。
+1. 実行するファイル名（python の仕様により渡される引数）
+2. テストケースを保持したファイルへのディレクトリ
+3. テストの実行結果を保存するディレクトリ名
+4. デフォルトの Pytest の引数を利用するかどうか
+5. 総並列処理数
+6. 割り当て並列処理番号
+7. provider version(Databricks runtime version)
+8. Pytest に渡す引数
+
+Databricks Workflows にて設定する Paramaters のサンプル
+[
+    "dbfs:/FileStore/unit/test_code",
+    "tests/unit/test_cases",
+    ".test_results",
+    "true",
+    "2",
+    "1",
+    "10.4LTS",
+    "-s",
+]
+"""
+
+import os
+import random
+import shutil
+import string
+import sys
+import math
+
+import pytest
+
+
+class PytestNodeidsCollector:
+    """pytest の実行時にテストのノードIDを取得するプラグインを定義"""
+
+    def pytest_collection_modifyitems(self, items):
+        self.nodeids = [item.nodeid for item in items]
+
+
+class RunPytestOnDatabricksWorkflows:
+    def __init__(self) -> None:
+        self.pytest_dir_base_name = "tmp_pytest"
+        self.junit_xml_dir = 'junit'
+        self.coverage_file_name_prefix = ".coverage"
+        suffix_string_length = 10
+        pytest_dir_suffix = ''.join([random.choice(string.ascii_lowercase) for i in range(suffix_string_length)])
+        self.pytest_dir_name = self.pytest_dir_base_name + "_" + pytest_dir_suffix
+        self.collector = PytestNodeidsCollector()
+
+    def get_values_from_args(self):
+        """実行時の引数を変数にセット"""
+        # Spark API Format から File API Format に変更
+        args = [arg.replace("dbfs:", "/dbfs") for arg in sys.argv]
+        self.dbfs_src_dir = args[1]
+        self.test_cases_path = args[2]
+        self.dbfs_test_results_dir_name = args[3]
+        self.has_set_default_pytest_args = args[4].lower()
+        try:
+            self.parallel_str_num = args[5]
+            self.parallel_num = int(self.parallel_str_num)
+            self.assigned_execution_str_num = args[6]
+            self.assigned_execution_num = int(self.assigned_execution_str_num)
+        except ValueError:
+            raise ValueError("parallel_num or assigned_execution_num are not int.")
+        self.provider_version = args[7]
+        self.pytest_base_args = args[8:].copy()
+
+    def define_pytest_default_args_to_get_test_cases(self):
+        """Pytest 実行時におけるデフォルトで渡す引数を定義"""
+        self.junit_xml_file_name = f'test-results-{self.provider_version}-{self.assigned_execution_str_num}-of-{self.parallel_str_num}.xml'
+        self.junit_xml_path = f"{self.junit_xml_dir}/{self.junit_xml_file_name}"
+        self.default_pytest_adopts = [
+            "-v",
+            "-rsx" "--showlocals",
+            "--tb=short",
+            "-s",
+            "--cov=src",
+            "--cov-branch",
+            "--cov-append",
+            f"--junitxml={self.junit_xml_path}",
+        ]
+        # Pytest の引数をセット
+        if self.has_set_default_pytest_args == "true":
+            self.pytest_base_args.extend(self.default_pytest_adopts)
+
+    def copy_codes_to_driver(self):
+        """dbfs 上にあるコードをドライバーのストレージにコピー後、カレントディレクトリとする"""
+        self.pytest_relatvie_path = f"./{self.pytest_dir_name}_{self.provider_version}"
+        shutil.rmtree(
+            self.pytest_relatvie_path,
+            ignore_errors=True,
+        )
+        shutil.copytree(
+            self.dbfs_src_dir,
+            self.pytest_relatvie_path,
+            dirs_exist_ok=True,
+        )
+        os.chdir(self.pytest_relatvie_path)
+
+        # カレントディレクトリを表示
+        print(os.getcwd())
+
+    def get_pytest_test_cases(self):
+        """Pytest により実行対象のテストケースを取得"""
+        # 実施対象のテストメソッドを取得
+        pytest_pre_args = []
+        pytest_discovery_args = [
+            "--quiet",
+            "--collect-only",
+            "--pyargs",
+            self.test_cases_path,
+        ]
+        pytest_pre_args.extend(pytest_discovery_args)
+
+        # -v 、あるいは、--verbose を引数から削除
+        except_parameters = [
+            "-v",
+            "--verbose",
+        ]
+        for except_para in except_parameters:
+            try:
+                pytest_pre_args.remove(except_para)
+            except ValueError:
+                pass
+
+        pytest.main(pytest_pre_args, plugins=[self.collector])
+
+    def split_pytest_test_cases_by_assigned_execution_num(self):
+        """割り当て並列処理番号に応じてテストケースを分割"""
+        test_cases = []
+        try:
+            test_cases = self.collector.nodeids.copy()
+        except AttributeError:
+            raise AttributeError("Unable to find test case.")
+
+        test_cases_num = len(test_cases)
+        if self.parallel_num < 1:
+            execution_num = 1
+        else:
+            execution_num = math.ceil(test_cases_num / self.parallel_num)
+
+        # 割り当て実行番号に応じて、テストメソッドのスライスを実施
+        # 実施対象テストケースの並び替えを実施
+        test_cases.sort(key=str)
+        start_num = execution_num * (self.assigned_execution_num - 1)
+        end_num = execution_num * self.assigned_execution_num
+
+        self.tgt_ut_cases = test_cases[start_num:end_num]
+
+    def execute_pytest(self):
+        """Pytest にテストを実行"""
+        pytest_args = []
+        pytest_args.extend(self.tgt_ut_cases)
+        pytest_args.extend(self.pytest_base_args)
+        self.exit_code = pytest.main(pytest_args)
+
+    def copy_pytest_results_to_dbfs(self):
+        """Pytest の実行結果を dbfs 上にコピー"""
+        dbfs_test_results_dir = f"{self.dbfs_src_dir}/{self.dbfs_test_results_dir_name}"
+        os.makedirs(dbfs_test_results_dir, exist_ok=True)
+        shutil.copyfile(
+            f"./{self.junit_xml_path}",
+            f"{dbfs_test_results_dir}/{self.junit_xml_file_name}",
+        )
+        shutil.copyfile(
+            f"./{self.coverage_file_name_prefix}",
+            f"{dbfs_test_results_dir}/{self.coverage_file_name_prefix}.{self.provider_version}.{self.assigned_execution_str_num}_of_{self.parallel_str_num}",
+        )
+
+    def rm_codes_on_driver(self):
+        """ドライバー上にあるコードを削除"""
+        shutil.rmtree(
+            f"../{self.pytest_relatvie_path}",
+            ignore_errors=True,
+        )
+
+    def return_exite_result(self):
+        """Pytest がエラーの場合にエラーとして終了"""
+        if self.exit_code.value != 0:
+            sys.exit(self.exit_code)
+
+    def main(self):
+        self.get_values_from_args()
+        self.define_pytest_default_args_to_get_test_cases()
+        self.copy_codes_to_driver()
+        self.get_pytest_test_cases()
+        self.split_pytest_test_cases_by_assigned_execution_num()
+        # 実施対象のテストケースがある場合にのみテストを実行
+        if len(self.tgt_ut_cases) >= 1:
+            self.execute_pytest()
+            self.copy_pytest_results_to_dbfs()
+        self.rm_codes_on_driver()
+        # テスト失敗時にエラーとする場合に下記のコメントアウトを除外
+        # self.return_exite_result()
+
+
+if __name__ == "__main__":
+    if len(sys.argv) >= 7:
+        RunPytestOnDatabricksWorkflows().main()

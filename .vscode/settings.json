@@ -1,0 +1,71 @@
+{
+    // Common setting start
+    "editor.defaultFormatter": "ms-python.python",
+    "editor.insertSpaces": true,
+    "editor.tabSize": 4,
+    // Automatic formatting when saving may cause unexpected behavior, so do not set it as a common setting.
+    // "editor.formatOnSave": true,
+    // "editor.codeActionsOnSave": {
+    //     "source.organizeImports": true
+    "[sql]": {
+        "editor.defaultFormatter": "adpyke.vscode-sql-formatter"
+    },
+    "[python]": {
+        // Black start
+        "editor.formatOnPaste": false,
+        // Black end
+    },
+    // Common setting end
+
+    // General Python settings start
+    // General Python settings end
+
+    // Code analysis settings start
+    // Code analysis settings end
+
+    // AutoComplete settings ここから
+    // AutoComplete settings end
+
+    // Formatting settings start
+    "python.formatting.provider": "black",
+    // Formatting settings end
+
+    // Refactoring - Sort Imports settings# start
+    // Refactoring - Sort Imports settings# end
+
+    // Linting settings start
+    "python.linting.enabled": true,
+    "python.linting.pylintEnabled": false,
+    "python.linting.mypyEnabled": true,
+    "python.linting.flake8Enabled": true,
+    "python.linting.flake8Args": [],
+
+    "python.linting.pydocstyleEnabled": true,
+    // Linting settings end
+
+    // Testing settings start
+    "python.testing.autoTestDiscoverOnSaveEnabled": true,
+    "python.testing.pytestEnabled": true,
+    "python.testing.unittestEnabled": false,
+    "python.testing.pytestArgs": [
+        "-n=auto",
+        "--cov-append",
+    ],
+    // Testing settings end
+
+    // SQL Formatter setting start
+    "sql-formatter.uppercase": true,
+    "sql-formatter.dialect": "sql",
+    // SQL Formatter setting end
+
+
+    // Coverage Gutters start
+    "coverage-gutters.showGutterCoverage": false,
+    "coverage-gutters.showLineCoverage": true,
+    "coverage-gutters.showRulerCoverage": true,
+    // Coverage Gutters end
+
+    // Python Docstring Generator configuration start
+    "autoDocstring.docstringFormat": "google",
+    // Python Docstring Generator configuration end
+}

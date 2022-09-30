@@ -1,0 +1,17 @@
+{
+    "recommendations": [
+        "ms-python.python", // Python basic extention
+        "ms-python.vscode-pylance", // Basic extensions for Python in VS Code
+        "visualstudioexptteam.vscodeintellicode", // IntelliCode for VS Code
+        "ms-vscode-remote.remote-wsl", // Connect to wsl
+        "njpwerner.autodocstring", // Auto-generate Python docstrings
+        "cpmcgrath.codealignment-vscode", // Align code
+        "ms-python.vscode-pylance", // Static analysis of python
+        "ms-toolsai.jupyter-renderers", // Rendering Jupyter format files
+        "shardulm94.trailing-spaces", // Remove wasted space
+        "adpyke.vscode-sql-formatter", // Format SQL
+        "donjayamanne.githistory", // Check git change history
+        "ms-vscode.live-server", // Preview HTML
+        "ryanluker.vscode-coverage-gutters", // Display code coverage status on the code
+    ]
+}

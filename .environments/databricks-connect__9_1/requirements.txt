@@ -1,0 +1,53 @@
+# requirement for Databricks Runtime 9.1
+# Formatting libraries
+black
+isort
+mypy
+
+# Linter libraries
+flake8
+pydocstyle
+
+# test libraries
+pytest
+coverage
+pytest-cov
+pytest-xdist
+
+# Sphinx Libraries
+sphinx
+sphinx-markdown-builder
+
+# databricks Connect
+databricks-connect==9.1.*
+
+# Databricks runtime libraries
+ipykernel==5.3.4
+ipython==7.22.0
+ipython-genutils==0.2.0
+ipywidgets==7.6.3
+jedi==0.17.2
+Jinja2==2.11.3
+joblib==1.0.1
+jupyter-client==6.1.12
+jupyter-core==4.7.1
+jupyterlab-pygments==0.1.2
+jupyterlab-widgets==1.0.0
+koalas==1.8.1
+matplotlib==3.4.2
+notebook==6.3.0
+numpy==1.19.2
+pandas==1.2.4
+pandocfilters==1.4.3
+plotly==5.1.0
+pyarrow==4.0.0
+Pygments==2.8.1
+pyparsing==2.4.7
+requests==2.25.1
+requests-unixsocket==0.2.0
+scikit-learn==0.24.1
+scipy==1.6.2
+seaborn==0.11.1
+six==1.15.0
+urllib3==1.25.11
+virtualenv==20.4.1

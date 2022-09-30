@@ -1,0 +1,34 @@
+parameters:
+- name: vm_image
+  default: ubuntu-20.04
+
+# variables:
+# - name: DATABRICKS_WORKSPACE_URL
+#   value: $(databricks_workspace_url)
+# - name: DATABRICKS_TOKEN
+#   value: dapi1234
+# - name: PIPELINE_ID
+#   value: $(System.TeamProjectId)_$(System.DefinitionId)_$(Build.BuildNumber)
+# - name: TEST_CODE_PATH_ON_DBFS
+#   value: /FileStore/unit
+
+jobs:
+- job: delete_codes_on_dbfs
+  displayName: Delete codes on dbfs
+  pool:
+    vmImage: ${{ parameters.vm_image }}
+  steps:
+  - checkout: none
+  - task: CmdLine@2
+    displayName: Delete codes on dbfs
+    inputs:
+      script: |
+        results=$(curl -X POST $(DATABRICKS_WORKSPACE_URL)/api/2.0/dbfs/delete \
+        -H 'Content-Type: application/json' \
+        -H 'Authorization: Bearer $(DATABRICKS_TOKEN)' \
+        -d '{
+        "path": "$(TEST_CODE_PATH_ON_DBFS)/$(PIPELINE_ID)",
+        "recursive": "true"
+        }'
+        )
+        echo $results

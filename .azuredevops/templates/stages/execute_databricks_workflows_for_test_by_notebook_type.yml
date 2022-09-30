@@ -1,0 +1,36 @@
+parameters:
+- name: delay_for_minutes
+  type: string
+  default: 5
+- name: job_suffix_name
+  default: notebook_10_4
+- name: databricks_cluster_runtime_version
+  default: 10.4.x-scala2.12
+- name: test_results_path
+  default: /dbfs/FileStore/unit/$(PIPELINE_ID)/notebook_result
+
+stages:
+- stage: ExecuteDatabricksWorkflowsForTest_${{ parameters.job_suffix_name }}
+  displayName: Execute Databricks workflows for test of ${{ parameters.job_suffix_name }}
+  dependsOn: CreateDatabrickRepos
+  jobs:
+    - template: ../jobs/execute_databricks_notobook_task_workflows_for_unit_test.yml
+      parameters:
+        test_results_path: ${{ parameters.test_results_path }}
+        job_suffix_name: ${{ parameters.job_suffix_name }}
+    - template: ../jobs/check_status_on_databricks_workflows.yml
+      parameters:
+        delay_for_minutes: ${{ parameters.delay_for_minutes }}
+        job_suffix_name: ${{ parameters.job_suffix_name }}
+- stage: GetAndPublishTestResults_${{ parameters.job_suffix_name }}
+  displayName: Get and publish test results  of ${{ parameters.job_suffix_name }}
+  dependsOn:
+    - ExecuteDatabricksWorkflowsForTest_${{ parameters.job_suffix_name }}
+  condition: always()
+  jobs:
+    - template: ../jobs/publish_test_results_of_unittest.yml
+      parameters:
+        job_suffix_name: ${{ parameters.job_suffix_name }}
+    - template: ../jobs/delete_databricks_workflows.yml
+      parameters:
+        job_suffix_name: ${{ parameters.job_suffix_name }}

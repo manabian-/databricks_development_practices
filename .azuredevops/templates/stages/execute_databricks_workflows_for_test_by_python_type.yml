@@ -1,0 +1,33 @@
+parameters:
+- name: delay_for_minutes
+  type: string
+  default: 5
+- name: job_suffix_name
+  default: 10_4
+- name: databricks_cluster_runtime_version
+  default: 10.4.x-scala2.12
+
+stages:
+- stage: ExecuteDatabricksWorkflowsForTest_${{ parameters.job_suffix_name }}
+  displayName: Execute Databricks workflows for test of ${{ parameters.job_suffix_name }}
+  dependsOn: CopyCodesTodbfs
+  jobs:
+    - template: ../jobs/execute_databricks_python_task_workflows_for_unit_test.yml
+      parameters:
+        job_suffix_name: ${{ parameters.job_suffix_name }}
+        databricks_cluster_runtime_version: ${{ parameters.databricks_cluster_runtime_version }}
+    - template: ../jobs/check_status_on_databricks_workflows.yml
+      parameters:
+        delay_for_minutes: ${{ parameters.delay_for_minutes }}
+        job_suffix_name: ${{ parameters.job_suffix_name }}
+- stage: GetAndPublishTestResults_${{ parameters.job_suffix_name }}
+  displayName: Get and publish test results  of ${{ parameters.job_suffix_name }}
+  dependsOn:
+    - ExecuteDatabricksWorkflowsForTest_${{ parameters.job_suffix_name }}
+  jobs:
+    - template: ../jobs/publish_test_results_of_pytest.yml
+      parameters:
+        job_suffix_name: ${{ parameters.job_suffix_name }}
+    - template: ../jobs/delete_databricks_workflows.yml
+      parameters:
+        job_suffix_name: ${{ parameters.job_suffix_name }}

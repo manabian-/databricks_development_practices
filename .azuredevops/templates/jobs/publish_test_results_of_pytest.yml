@@ -1,0 +1,49 @@
+parameters:
+- name: python_version
+  default: 3.8
+- name: vm_image
+  default: ubuntu-20.04
+- name: job_suffix_name
+  default: 10_4
+
+# variables:
+# - name: DATABRICKS_WORKSPACE_URL
+#   value: $(databricks_workspace_url)
+# - name: DATABRICKS_TOKEN
+#   value: dapi1234
+# - name: PIPELINE_ID
+#   value: $(System.TeamProjectId)_$(System.DefinitionId)_$(Build.BuildNumber)
+# - name: TEST_CODE_PATH_ON_DBFS
+#   value: /FileStore/unit
+
+jobs:
+- job: publish_test_results
+  pool:
+    vmImage: ${{ parameters.vm_image }}
+  condition: succeeded()
+  steps:
+  - task: UsePythonVersion@0
+    displayName: 'Use Python ${{ parameters.python_version }}'
+    inputs:
+      versionSpec: ${{ parameters.python_version }}
+
+  - task: CmdLine@2
+    displayName: 'Install libraries'
+    inputs:
+      script: |
+        pip install databricks-cli
+  - task: CmdLine@2
+    displayName: 'Copy test results from databricks'
+    inputs:
+      script: |
+        databricks fs cp -r dbfs:$(TEST_CODE_PATH_ON_DBFS)/$(PIPELINE_ID)/.test_results . --overwrite
+    env:
+      DATABRICKS_TOKEN: $(DATABRICKS_TOKEN)
+      DATABRICKS_HOST: $(DATABRICKS_WORKSPACE_URL)
+  - task: PublishTestResults@2
+    displayName: 'Publish test results'
+    inputs:
+      testResultsFiles: '**/test-results-${{ parameters.job_suffix_name }}*.xml'
+      mergeTestResults: true
+      testRunTitle: 'Test results by workflows of ${{ parameters.job_suffix_name }}'
+      failTaskOnFailedTests: true

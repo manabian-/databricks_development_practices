@@ -1,0 +1,36 @@
+parameters:
+- name: vm_image
+  default: ubuntu-20.04
+- name: job_suffix_name
+  default: 10_4
+
+# variables:
+# - name: DATABRICKS_WORKSPACE_URL
+#   value: $(databricks_workspace_url)
+# - name: DATABRICKS_TOKEN
+#   value: dapi1234
+# - name: PIPELINE_ID
+#   value: $(System.TeamProjectId)_$(System.DefinitionId)_$(Build.BuildNumber)
+
+jobs:
+- job: delete_databricks_workflows_${{ parameters.job_suffix_name }}
+  pool:
+    vmImage: ${{ parameters.vm_image }}
+  variables:
+    DATABRICKS_JOB_ID: $[ stageDependencies.ExecuteDatabricksWorkflowsForTest_${{ parameters.job_suffix_name }}.execute_databricks_test_workflow_${{ parameters.job_suffix_name }}.outputs['execute_databricks_test_workflow.databricks_job_id'] ]
+  condition: always()
+  steps:
+  - checkout: none
+  - task: CmdLine@2
+    displayName: Delete Databricks Workflows
+    name: delete_databricks_workflows
+    inputs:
+      script: |
+        echo "Databricks JOB ID:" $(DATABRICKS_JOB_ID)
+        result=$(curl -X POST $(DATABRICKS_WORKSPACE_URL)/api/2.1/jobs/delete \
+        -H 'Content-Type: application/json' \
+        -H 'Authorization: Bearer $(DATABRICKS_TOKEN)' \
+        -d '{
+        "job_id": '"${DATABRICKS_JOB_ID}"'
+        }'
+        )

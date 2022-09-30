@@ -1,0 +1,77 @@
+# requirement for Databricks Runtime 10.4
+# Formatting libraries
+black
+isort
+mypy
+
+# Linter libraries
+flake8
+pydocstyle
+
+# test libraries
+pytest
+coverage
+pytest-cov
+pytest-xdist
+
+# Sphinx Libraries
+sphinx
+sphinx-markdown-builder
+
+# databricks Connect
+databricks-connect==10.4.*
+
+# Databricks runtime libraries
+ipykernel==5.3.4
+ipython==7.22.0
+ipython-genutils==0.2.0
+ipywidgets==7.6.3
+jedi==0.17.2
+Jinja2==2.11.3
+jmespath==0.10.0
+joblib==1.0.1
+jsonschema==3.2.0
+jupyter-client==6.1.12
+jupyter-core==4.7.1
+jupyterlab-pygments==0.1.2
+jupyterlab-widgets==1.0.0
+koalas==1.8.2
+MarkupSafe==2.0.1
+matplotlib==3.4.2
+mistune==0.8.4
+nbclient==0.5.3
+nbconvert==6.0.7
+nbformat==5.1.3
+nest-asyncio==1.5.1
+notebook==6.3.0
+numpy==1.20.1
+pandas==1.2.4
+pandocfilters==1.4.3
+parso==0.7.0
+patsy==0.5.1
+pexpect==4.8.0
+pickleshare==0.7.5
+Pillow==8.2.0
+plotly==5.5.0
+pluggy==1.0.0
+prometheus-client==0.10.1
+prompt-toolkit==3.0.17
+protobuf==3.17.2
+ptyprocess==0.7.0
+py==1.11.0
+pyarrow==4.0.0
+pycparser==2.20
+Pygments==2.8.1
+pyparsing==2.4.7
+pyrsistent==0.17.3
+python-dateutil==2.8.1
+python-engineio==4.3.0
+python-socketio==5.4.1
+pytz==2020.5
+pyzmq==20.0.0
+s3transfer==0.3.7
+scikit-learn==0.24.1
+scipy==1.6.2
+seaborn==0.11.1
+Send2Trash==1.5.0
+widgetsnbextension==3.5.1

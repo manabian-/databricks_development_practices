@@ -1,0 +1,32 @@
+parameters:
+- name: vm_image
+  default: ubuntu-20.04
+
+# variables:
+# - name: PIPELINE_ID
+#   value: $(System.TeamProjectId)_$(System.DefinitionId)_$(Build.BuildNumber)
+# - name: DATABRICKS_WORKSPACE_URL
+#   value: $(databricks_workspace_url)
+# - name: DATABRICKS_TOKEN
+#   value: dapi1234
+
+jobs:
+- job:
+  displayName: Delete databricks Repos for test
+  pool:
+    vmImage: ${{ parameters.vm_image }}
+  steps:
+  - checkout: none
+  - task: CmdLine@2
+    displayName: Delete databricks Repos for test
+    inputs:
+      script: |
+        results=$(curl -X POST $(DATABRICKS_WORKSPACE_URL)/api/2.0/workspace/delete  \
+        -H 'Content-Type: application/json' \
+        -H 'Authorization: Bearer $(DATABRICKS_TOKEN)' \
+        -d '{
+            "path": "/Repos/'"${PIPELINE_ID}"'",
+            "recursive": true
+        }' \
+        )
+        echo $results

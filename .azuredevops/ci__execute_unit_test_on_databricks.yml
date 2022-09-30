@@ -1,0 +1,71 @@
+# Databricks Build Pipeline
+
+trigger:
+  batch: true
+  branches:
+    include:
+    - master
+    - releases/*
+pr: none
+
+variables:
+- group: databricks_dev
+- name: PIPELINE_ID
+  value: $(System.TeamProjectId)_$(System.DefinitionId)_$(Build.BuildNumber)
+- name: TEST_CODE_PATH_ON_DBFS
+  value: /FileStore/unit
+# - name: DATABRICKS_WORKSPACE_URL
+#   value: $(databricks_workspace_url)
+# - name: DATABRICKS_TOKEN
+#   value: dapi1234
+# - name: TARGET_TEST_PATH
+#   value: tests/unit
+# - name: TEST_MAIN_NOTEBOOK_PATH
+#   value: tests/samples/main__ut__v1
+
+stages:
+  - stage: CreateDatabrickRepos
+    displayName: Create databrick Repos
+    dependsOn: []
+    jobs:
+    - template: templates/jobs/create_databricks_repos_for_test.yml
+      parameters:
+        databricks_repos_id: $(DATABRICKS_REPOS_ID)
+  - template: templates/stages/execute_databricks_workflows_for_test_by_notebook_type.yml
+    parameters:
+      job_suffix_name: notebook_10_4
+      databricks_cluster_runtime_version: 10.4.x-scala2.12
+      test_results_path: $(TEST_CODE_PATH_ON_DBFS)/$(PIPELINE_ID)/.test_results/notebook_10_4
+      delay_for_minutes: 5
+  - stage: CopyCodesTodbfs
+    displayName: Copy codes to dbfs
+    dependsOn: []
+    jobs:
+      - template: templates/jobs/copy_codes_to_dbfs.yml
+  - template: templates/stages/execute_databricks_workflows_for_test_by_python_type.yml
+    parameters:
+      job_suffix_name: python_9_1
+      databricks_cluster_runtime_version: 9.1.x-scala2.12
+      delay_for_minutes: 5
+  - template: templates/stages/execute_databricks_workflows_for_test_by_python_type.yml
+    parameters:
+      job_suffix_name: python_10_4
+      databricks_cluster_runtime_version: 10.4.x-scala2.12
+      delay_for_minutes: 5
+  - stage: GetAndPublishCodeCoverage
+    displayName: Get and publish code coverage
+    condition: succeededOrFailed()
+    dependsOn:
+      - GetAndPublishTestResults_python_9_1
+      - GetAndPublishTestResults_python_10_4
+      - GetAndPublishTestResults_notebook_10_4
+    jobs:
+      - template: templates/jobs/publish_code_coverage.yml
+  - stage: PostProcesses
+    displayName: Post processes
+    condition: always()
+    dependsOn:
+      - GetAndPublishCodeCoverage
+    jobs:
+      - template: templates/jobs/delete_codes_on_dbfs.yml
+      - template: templates/jobs/delete_databricks_respos_for_test.yml

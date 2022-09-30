@@ -1,0 +1,30 @@
+# parameters
+trigger: none
+pr: none
+
+variables:
+# - name: DATABRICKS_WORKSPACE_URL
+#   value: $(databricks_workspace_url)
+# - name: DATABRICKS_TOKEN
+#   value: dapi1234
+# - name: DATABRICKS_REPOS_ID
+#   value: 4095348192396840
+# - name: BRANCH_NAME
+#   value: feature/7874
+
+
+jobs:
+  - job: Databrics_REST_API_by_CmdLine
+    steps:
+    - checkout: none
+    - task: CmdLine@2
+      displayName: Execute Databricks Workflow
+      inputs:
+        checkout: none
+        script: |
+          results=$(curl -X PATCH $(DATABRICKS_WORKSPACE_URL)/api/2.0/repos/$(DATABRICKS_REPOS_ID) \
+          -H 'Content-Type: application/json' \
+          -H 'Authorization: Bearer $(DATABRICKS_TOKEN)' \
+          -d '{"branch": "'"$(BRANCH_NAME)"'"}' \
+          )
+          echo $results

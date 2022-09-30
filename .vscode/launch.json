@@ -1,0 +1,16 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+      // Pytest-cov の仕様により、デバック時に Coverage を取得しないようにする
+      // https://code.visualstudio.com/docs/python/testing#_pytest-configuration-settings
+      {
+        "name": "Python: Current File",
+        "type": "python",
+        "request": "launch",
+        "program": "${file}",
+        "purpose": ["debug-test"],
+        "console": "integratedTerminal",
+        "env": { "PYTEST_ADDOPTS": "--no-cov -n 1 -s" }
+      }
+    ]
+  }

@@ -1,0 +1,108 @@
+
+parameters:
+- name: test_results_path
+  default: /FileStore/unit/junit/test_reports
+- name: python_version
+  default: 3.8
+- name: vm_image
+  default: ubuntu-20.04
+- name: job_suffix_name
+  default: 10_4
+- name: databricks_cluster_runtime_version
+  default: 10.4.x-scala2.12
+- name: databricks_cluster_node_type_id
+  default: Standard_DS3_v2
+- name: databricks_cluster_num_workers
+  default: 1
+
+# variables:
+# - name: PIPELINE_ID
+#   value: $(System.TeamProjectId)_$(System.DefinitionId)_$(Build.BuildNumber)
+# - name: DATABRICKS_WORKSPACE_URL
+#   value: $(databricks_workspace_url)
+# - name: DATABRICKS_TOKEN
+#   value: dapi1234
+# - name: TEST_MAIN_NOTEBOOK_PATH
+#   value: tests/samples/main__ut__v1
+
+jobs:
+- job: execute_databricks_test_workflow_${{ parameters.job_suffix_name }}
+  pool:
+    vmImage: ${{ parameters.vm_image }}
+  steps:
+    - checkout: none
+    - task: CmdLine@2
+      displayName: Execute Databricks Workflow of test
+      name: execute_databricks_test_workflow
+      inputs:
+        script: |
+            build_repository_uri=$(Build.Repository.Uri)
+            build_repository_name=$(Build.Repository.Name)
+            executed_results=$(curl -X POST $(DATABRICKS_WORKSPACE_URL)/api/2.1/jobs/create \
+            -H 'Content-Type: application/json' \
+            -H 'Authorization: Bearer $(DATABRICKS_TOKEN)' \
+            -d '{
+            "name": "Test workflows",
+            "job_clusters": [
+            {
+                "job_cluster_key": "default_cluster",
+                "new_cluster": {
+                "spark_version": "'"${{ parameters.databricks_cluster_runtime_version }}"'",
+                "node_type_id": "'"${{ parameters.databricks_cluster_node_type_id }}"'",
+                "num_workers": "'"${{ parameters.databricks_cluster_num_workers }}"'",
+                "spark_conf": {
+                    "spark.databricks.delta.preview.enabled": "true"
+                },
+                "azure_attributes": {
+                    "first_on_demand": 1,
+                    "availability": "SPOT_WITH_FALLBACK_AZURE",
+                    "spot_bid_max_price": -1
+                }
+                }
+            }
+            ],
+            "tasks": [
+                {
+                    "task_key": "execute_test_1_of_1",
+                    "description": "Extracts session data from events",
+                    "depends_on": [],
+                    "job_cluster_key": "default_cluster",
+                    "notebook_task": {
+                    "notebook_path": "/Repos/'"${PIPELINE_ID}"'/'"${build_repository_name}"'/'"${TEST_MAIN_NOTEBOOK_PATH}"'",
+                    "base_parameters": {
+                        "is_output_with_xml": "True",
+                        "xml_output_target_directory": "/dbfs'"${{ parameters.test_results_path }}"'",
+                        "parallel_num": "10"
+                    }
+                    },
+                    "timeout_seconds": 86400,
+                    "libraries": [
+                        {
+                            "pypi": {
+                                "package": "unittest-xml-reporting"
+                            }
+                        }
+                    ]
+                }
+            ]
+            }' \
+            )
+            echo $executed_results
+            executed_job_id=$( echo $executed_results | jq -r .job_id )
+            echo "Databricks JOB ID:" $executed_job_id
+            echo "##vso[task.setvariable variable=databricks_job_id;isOutput=true;]$executed_job_id"
+            executed_run_id=$(curl -X POST $(DATABRICKS_WORKSPACE_URL)/api/2.1/jobs/run-now \
+            -H 'Content-Type: application/json' \
+            -H 'Authorization: Bearer $(DATABRICKS_TOKEN)' \
+            -d '{
+            "job_id": '"${executed_job_id}"'
+            }' \
+            | jq -r .run_id \
+            )
+            echo "Databricks RUN ID:" $executed_run_id
+            if [ $executed_run_id = null ]; then
+              echo "##vso[task.LogIssue type=error;]The test workflow has not executed."
+              echo "##vso[task.complete result=Failed;]"
+              DATABRICKS_WORKFLOW_COMPLETED_STATUS="true"
+            fi
+            echo "##vso[task.setvariable variable=databricks_run_id;isOutput=true;]$executed_run_id"

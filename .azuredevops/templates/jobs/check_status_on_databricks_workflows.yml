@@ -1,0 +1,155 @@
+parameters:
+- name: delay_for_minutes
+  type: string
+  default: 3
+- name: job_suffix_name
+  default: 10_4
+- name: vm_image
+  default: ubuntu-20.04
+- name: delay_task_name
+  type: string
+  default: Delay_for_test_complete
+- name: test_complete_check_task_name
+  type: string
+  default: Check_test_complete
+- name: first_job_name_suffix
+  type: string
+  default: 000
+- name: last_job_name_suffix
+  type: string
+  default: 020
+- name: job_names
+  type: object
+  default:
+    - current: '001'
+      previous: '000'
+    - current: '002'
+      previous: '001'
+    - current: '003'
+      previous: '002'
+    - current: '004'
+      previous: '003'
+    - current: '005'
+      previous: '004'
+    - current: '006'
+      previous: '005'
+    - current: '007'
+      previous: '006'
+    - current: '008'
+      previous: '007'
+    - current: '009'
+      previous: '008'
+    - current: '010'
+      previous: '009'
+    - current: '011'
+      previous: '010'
+    - current: '012'
+      previous: '011'
+    - current: '013'
+      previous: '012'
+    - current: '014'
+      previous: '013'
+    - current: '015'
+      previous: '014'
+    - current: '016'
+      previous: '015'
+    - current: '017'
+      previous: '016'
+    - current: '018'
+      previous: '017'
+    - current: '019'
+      previous: '018'
+    - current: '020'
+      previous: '019'
+
+jobs:
+# first time check
+- job: ${{ parameters.test_complete_check_task_name }}_${{ parameters.first_job_name_suffix }}
+  dependsOn: 
+    - execute_databricks_test_workflow_${{ parameters.job_suffix_name }}
+  pool:
+    vmImage: ${{ parameters.vm_image }}
+  variables:
+    DATABRICKS_RUN_ID: $[ dependencies.execute_databricks_test_workflow_${{ parameters.job_suffix_name }}.outputs['execute_databricks_test_workflow.databricks_run_id'] ]
+  steps:
+  - checkout: none
+  - task: CmdLine@2
+    displayName: Get Databricks Workflow status
+    name: cmd_${{ parameters.first_job_name_suffix }}
+    inputs:
+      script: |
+        echo "Databricks RUN ID:" $(DATABRICKS_RUN_ID)
+        result=$(curl -X GET $(DATABRICKS_WORKSPACE_URL)/api/2.1/jobs/runs/get?run_id=$(DATABRICKS_RUN_ID) \
+        -H 'Content-Type: application/json' \
+        -H 'Authorization: Bearer $(DATABRICKS_TOKEN)' \
+        | jq -r .state.life_cycle_state \
+        )
+        echo $result
+        DATABRICKS_WORKFLOW_COMPLETED_STATUS="false"
+        if [ $result != "RUNNING" ] && [ $result != "TERMINATED" ]; then
+          echo "##vso[task.LogIssue type=error;]The test workflow has not executed."
+          echo "##vso[task.complete result=Failed;]"
+          DATABRICKS_WORKFLOW_COMPLETED_STATUS="true"
+        fi
+        echo "##vso[task.setvariable variable=DATABRICKS_WORKFLOW_COMPLETED_STATUS;isOutput=true;]$DATABRICKS_WORKFLOW_COMPLETED_STATUS"
+# test check after the second time
+- ${{ each job_name in parameters.job_names }}:
+  - job: ${{ parameters.delay_task_name }}_${{ job_name.current }}
+    pool: Server
+    dependsOn: ${{ parameters.test_complete_check_task_name }}_${{ job_name.previous }}
+    condition: eq( dependencies.${{ parameters.test_complete_check_task_name }}_${{ job_name.previous }}.outputs['cmd_${{ job_name.previous }}.DATABRICKS_WORKFLOW_COMPLETED_STATUS'], 'false')
+    steps:
+    - task: Delay@1
+      displayName: 'Delay'
+      inputs:
+        delayForMinutes: ${{ parameters.delay_for_minutes }}
+  - job: ${{ parameters.test_complete_check_task_name }}_${{ job_name.current }}
+    dependsOn:
+      - execute_databricks_test_workflow_${{ parameters.job_suffix_name }}
+      - ${{ parameters.delay_task_name }}_${{ job_name.current }}
+    condition: eq( dependencies.${{ parameters.test_complete_check_task_name }}_${{ job_name.previous }}.outputs['cmd_${{ job_name.previous }}.DATABRICKS_WORKFLOW_COMPLETED_STATUS'], 'false')
+    pool:
+      vmImage: ${{ parameters.vm_image }}
+    variables:
+      DATABRICKS_RUN_ID: $[ dependencies.execute_databricks_test_workflow_${{ parameters.job_suffix_name }}.outputs['execute_databricks_test_workflow.databricks_run_id'] ]
+    steps:
+    - checkout: none
+    - task: CmdLine@2
+      displayName: Get Databricks Workflow status
+      name: cmd_${{ job_name.current }}
+      inputs:
+        script: |
+          echo "Databricks RUN ID:" $(DATABRICKS_RUN_ID)
+          result=$(curl -X GET $(DATABRICKS_WORKSPACE_URL)/api/2.1/jobs/runs/get?run_id=$(DATABRICKS_RUN_ID) \
+          -H 'Content-Type: application/json' \
+          -H 'Authorization: Bearer $(DATABRICKS_TOKEN)' \
+          | jq -r .state.result_state \
+          )
+          echo $result
+          DATABRICKS_WORKFLOW_COMPLETED_STATUS="false"
+          if [ $result = "SUCCESS" ]; then
+            DATABRICKS_WORKFLOW_COMPLETED_STATUS="true"
+          elif [ $result = "FAILED" ]; then
+            DATABRICKS_WORKFLOW_COMPLETED_STATUS="true"
+            echo "##vso[task.LogIssue type=error;]The test is failed."
+            echo "##vso[task.complete result=Failed;]"
+          else
+            echo "##vso[task.setvariable variable=DATABRICKS_WORKFLOW_COMPLETED_STATUS;isOutput=true;]$DATABRICKS_WORKFLOW_COMPLETED_STATUS"
+            echo $DATABRICKS_WORKFLOW_COMPLETED_STATUS
+          fi
+- job: Raise_error_when_the_test_job_has_completed
+  pool:
+    vmImage: ${{ parameters.vm_image }}
+  dependsOn: 
+    - ${{ parameters.test_complete_check_task_name }}_${{ parameters.last_job_name_suffix }}
+  condition: eq( dependencies.${{ parameters.test_complete_check_task_name }}_${{ parameters.last_job_name_suffix }}.outputs['cmd_${{ parameters.last_job_name_suffix }}.DATABRICKS_WORKFLOW_COMPLETED_STATUS'], 'false')
+  steps:
+  - checkout: none
+  - task: CmdLine@2
+    displayName: Raise error when the test job has completed
+    name: raise_error
+    inputs:
+      script: |
+        echo "##vso[task.LogIssue type=error;]The test time has exceeded the expected time."
+        echo "##vso[task.complete result=Failed;]"
+

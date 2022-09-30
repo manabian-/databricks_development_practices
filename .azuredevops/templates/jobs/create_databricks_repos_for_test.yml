@@ -1,0 +1,84 @@
+# variables:
+# - group: databricks_stg
+# - name: PIPELINE_ID
+#   value: $(System.TeamProjectId)_$(System.DefinitionId)_$(Build.BuildNumber)
+# - name: databricks_repos_id
+#   value: 4095348192396840
+# - name: branch_name
+#   value: feature/7874
+# - name: DATABRICKS_WORKSPACE_URL
+#   value: $(databricks_workspace_url)
+# - name: DATABRICKS_TOKEN
+#   value: dapi1234
+
+parameters:
+- name: databricks_repos_id
+  type: string
+  default: 5
+
+jobs:
+  - job: create_databricks_respo_for_test
+    displayName: Create Databricks Repos for test by Databrikcs Rest API
+    steps:
+    - checkout: none
+    - task: CmdLine@2
+      displayName: Create Databricks Repos for test
+      inputs:
+        script: |
+          # Create directory on repos
+          results=$(curl -X POST $(DATABRICKS_WORKSPACE_URL)/api/2.0/workspace/mkdirs \
+          -H 'Content-Type: application/json' \
+          -H 'Authorization: Bearer $(DATABRICKS_TOKEN)' \
+          -d '{
+            "path": "/Repos/'"${PIPELINE_ID}"'"
+          }' \
+          )
+          echo $results
+          # Create Databricks Repos
+          build_repository_uri=$(Build.Repository.Uri)
+          build_repository_name=$(Build.Repository.Name)
+          echo $build_repository_uri
+          echo $build_repository_name
+          results=$(curl -X POST $(DATABRICKS_WORKSPACE_URL)/api/2.0/repos \
+          -H 'Content-Type: application/json' \
+          -H 'Authorization: Bearer $(DATABRICKS_TOKEN)' \
+          -d '{
+            "url": "'"${build_repository_uri}"'",
+            "provider": "azureDevOpsServices",
+            "path": "/Repos/'"${PIPELINE_ID}"'/'"${build_repository_name}"'"
+          }' \
+          )
+          echo $results
+          databricks_repos_id=$( echo $results | jq -r .id )
+          echo $databricks_repos_id
+          # Get The branch of the triggering repo
+          build_source_branch=$(Build.SourceBranch)
+          echo $build_source_branch
+          # Get a name of the branch or the tag and boolean value about whether trigger is a branch
+          is_branch=true
+          if [[ $build_source_branch =~ refs/heads/* ]]; then
+            src_branch_name=${build_source_branch##refs/heads/}
+          elif [[ $build_source_branch =~ refs/pull/* ]]; then
+            src_branch_name=${build_source_branch##refs/pull/}
+          elif [[ $build_source_branch =~ refs/tags/* ]]; then
+            src_branch_name=${build_source_branch##refs/tags/}
+            is_branch=false
+          fi
+          echo $src_branch_name
+          echo $is_branch
+          # Update repos based on branch
+          if "${is_branch}"; then
+            results=$(curl -X PATCH $(DATABRICKS_WORKSPACE_URL)/api/2.0/repos/$databricks_repos_id \
+            -H 'Content-Type: application/json' \
+            -H 'Authorization: Bearer $(DATABRICKS_TOKEN)' \
+            -d '{"branch": "'"$src_branch_name"'"}' \
+            )
+          # Update repos based on tag
+          else
+            results=$(curl -X PATCH $(DATABRICKS_WORKSPACE_URL)/api/2.0/repos/$databricks_repos_id \
+            -H 'Content-Type: application/json' \
+            -H 'Authorization: Bearer $(DATABRICKS_TOKEN)' \
+            -d '{"tag": "'"$src_branch_name"'"}' \
+            )
+          fi
+          echo $results

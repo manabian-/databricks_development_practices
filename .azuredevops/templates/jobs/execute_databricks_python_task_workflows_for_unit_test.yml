@@ -1,0 +1,398 @@
+
+parameters:
+- name: test_runner_path
+  default: tests/main__run_pytest_on_databricks_workflows__v1
+- name: test_results_path
+  default: .test_results
+- name: python_version
+  default: 3.8
+- name: vm_image
+  default: ubuntu-20.04
+- name: job_suffix_name
+  default: 10_4
+- name: databricks_cluster_runtime_version
+  default: 10.4.x-scala2.12
+- name: databricks_cluster_node_type_id
+  default: Standard_DS3_v2
+- name: databricks_cluster_num_workers
+  default: 1
+
+# variables:
+# - group: databricks_stg
+# - name: PIPELINE_ID
+#   value: $(System.TeamProjectId)_$(System.DefinitionId)_$(Build.BuildNumber)
+# - name: DATABRICKS_WORKSPACE_URL
+#   value: $(databricks_workspace_url)
+# - name: DATABRICKS_TOKEN
+#   value: dapi1234
+# - name: TEST_CODE_PATH_ON_DBFS
+#   value: dbfs:/FileStore/unit
+
+jobs:
+- job: execute_databricks_test_workflow_${{ parameters.job_suffix_name }}
+  pool:
+    vmImage: ${{ parameters.vm_image }}
+  steps:
+    - checkout: none
+    - task: CmdLine@2
+      displayName: Execute Databricks Workflow of test
+      name: execute_databricks_test_workflow
+      inputs:
+        script: |
+            executed_results=$(curl -X POST $(DATABRICKS_WORKSPACE_URL)/api/2.1/jobs/create \
+            -H 'Content-Type: application/json' \
+            -H 'Authorization: Bearer $(DATABRICKS_TOKEN)' \
+            -d '{
+            "name": "Test workflows",
+            "job_clusters": [
+                {
+                    "job_cluster_key": "default_cluster",
+                    "new_cluster": {
+                        "spark_version": "'"${{ parameters.databricks_cluster_runtime_version }}"'",
+                        "node_type_id": "'"${{ parameters.databricks_cluster_node_type_id }}"'",
+                        "num_workers": "'"${{ parameters.databricks_cluster_num_workers }}"'",
+                        "spark_conf": {
+                            "spark.databricks.delta.preview.enabled": "true"
+                        },
+                        "azure_attributes": {
+                            "first_on_demand": 1,
+                            "availability": "SPOT_WITH_FALLBACK_AZURE",
+                            "spot_bid_max_price": -1
+                        }
+                    }
+                }
+            ],
+            "tasks": [
+                {
+                    "task_key": "execute_test_1_of_10",
+                    "description": "Extracts session data from events",
+                    "depends_on": [],
+                    "job_cluster_key": "default_cluster",
+                    "spark_python_task": {
+                        "python_file": "dbfs:'"$(TEST_CODE_PATH_ON_DBFS)"'/'"${PIPELINE_ID}"'/'"${{ parameters.test_runner_path }}"'",
+                        "parameters": [
+                            "dbfs:'"$(TEST_CODE_PATH_ON_DBFS)"'/'"${PIPELINE_ID}"'",
+                            "'"$(TARGET_TEST_PATH)"'",
+                            "'"${{ parameters.test_results_path }}"'",
+                            "true",
+                            "10",
+                            "1",
+                            "'"${{ parameters.job_suffix_name }}"'"
+                        ]
+                    },
+                    "timeout_seconds": 86400,
+                    "libraries": [
+                        {
+                            "pypi": {
+                                "package": "pytest"
+                            }
+                        },
+                        {
+                            "pypi": {
+                                "package": "pytest-cov"
+                            }
+                        }
+                    ]
+                },
+                {
+                    "task_key": "execute_test_2_of_10",
+                    "description": "Extracts session data from events",
+                    "depends_on": [],
+                    "job_cluster_key": "default_cluster",
+                    "spark_python_task": {
+                        "python_file": "dbfs:'"$(TEST_CODE_PATH_ON_DBFS)"'/'"${PIPELINE_ID}"'/'"${{ parameters.test_runner_path }}"'",
+                        "parameters": [
+                            "dbfs:'"$(TEST_CODE_PATH_ON_DBFS)"'/'"${PIPELINE_ID}"'",
+                            "'"$(TARGET_TEST_PATH)"'",
+                            "'"${{ parameters.test_results_path }}"'",
+                            "true",
+                            "10",
+                            "2",
+                            "'"${{ parameters.job_suffix_name }}"'"
+                        ]
+                    },
+                    "timeout_seconds": 86400,
+                    "libraries": [
+                        {
+                            "pypi": {
+                                "package": "pytest"
+                            }
+                        },
+                        {
+                            "pypi": {
+                                "package": "pytest-cov"
+                            }
+                        }
+                    ]
+                },
+                {
+                    "task_key": "execute_test_3_of_10",
+                    "description": "Extracts session data from events",
+                    "depends_on": [],
+                    "job_cluster_key": "default_cluster",
+                    "spark_python_task": {
+                        "python_file": "dbfs:'"$(TEST_CODE_PATH_ON_DBFS)"'/'"${PIPELINE_ID}"'/'"${{ parameters.test_runner_path }}"'",
+                        "parameters": [
+                            "dbfs:'"$(TEST_CODE_PATH_ON_DBFS)"'/'"${PIPELINE_ID}"'",
+                            "'"$(TARGET_TEST_PATH)"'",
+                            "'"${{ parameters.test_results_path }}"'",
+                            "true",
+                            "10",
+                            "3",
+                            "'"${{ parameters.job_suffix_name }}"'"
+                        ]
+                    },
+                    "timeout_seconds": 86400,
+                    "libraries": [
+                        {
+                            "pypi": {
+                                "package": "pytest"
+                            }
+                        },
+                        {
+                            "pypi": {
+                                "package": "pytest-cov"
+                            }
+                        }
+                    ]
+                },
+                {
+                    "task_key": "execute_test_4_of_10",
+                    "description": "Extracts session data from events",
+                    "depends_on": [],
+                    "job_cluster_key": "default_cluster",
+                    "spark_python_task": {
+                        "python_file": "dbfs:'"$(TEST_CODE_PATH_ON_DBFS)"'/'"${PIPELINE_ID}"'/'"${{ parameters.test_runner_path }}"'",
+                        "parameters": [
+                            "dbfs:'"$(TEST_CODE_PATH_ON_DBFS)"'/'"${PIPELINE_ID}"'",
+                            "'"$(TARGET_TEST_PATH)"'",
+                            "'"${{ parameters.test_results_path }}"'",
+                            "true",
+                            "10",
+                            "4",
+                            "'"${{ parameters.job_suffix_name }}"'"
+                        ]
+                    },
+                    "timeout_seconds": 86400,
+                    "libraries": [
+                        {
+                            "pypi": {
+                                "package": "pytest"
+                            }
+                        },
+                        {
+                            "pypi": {
+                                "package": "pytest-cov"
+                            }
+                        }
+                    ]
+                },
+                {
+                    "task_key": "execute_test_5_of_10",
+                    "description": "Extracts session data from events",
+                    "depends_on": [],
+                    "job_cluster_key": "default_cluster",
+                    "spark_python_task": {
+                        "python_file": "dbfs:'"$(TEST_CODE_PATH_ON_DBFS)"'/'"${PIPELINE_ID}"'/'"${{ parameters.test_runner_path }}"'",
+                        "parameters": [
+                            "dbfs:'"$(TEST_CODE_PATH_ON_DBFS)"'/'"${PIPELINE_ID}"'",
+                            "'"$(TARGET_TEST_PATH)"'",
+                            "'"${{ parameters.test_results_path }}"'",
+                            "true",
+                            "10",
+                            "5",
+                            "'"${{ parameters.job_suffix_name }}"'"
+                        ]
+                    },
+                    "timeout_seconds": 86400,
+                    "libraries": [
+                        {
+                            "pypi": {
+                                "package": "pytest"
+                            }
+                        },
+                        {
+                            "pypi": {
+                                "package": "pytest-cov"
+                            }
+                        }
+                    ]
+                },
+                {
+                    "task_key": "execute_test_6_of_10",
+                    "description": "Extracts session data from events",
+                    "depends_on": [],
+                    "job_cluster_key": "default_cluster",
+                    "spark_python_task": {
+                        "python_file": "dbfs:'"$(TEST_CODE_PATH_ON_DBFS)"'/'"${PIPELINE_ID}"'/'"${{ parameters.test_runner_path }}"'",
+                        "parameters": [
+                            "dbfs:'"$(TEST_CODE_PATH_ON_DBFS)"'/'"${PIPELINE_ID}"'",
+                            "'"$(TARGET_TEST_PATH)"'",
+                            "'"${{ parameters.test_results_path }}"'",
+                            "true",
+                            "10",
+                            "6",
+                            "'"${{ parameters.job_suffix_name }}"'"
+                        ]
+                    },
+                    "timeout_seconds": 86400,
+                    "libraries": [
+                        {
+                            "pypi": {
+                                "package": "pytest"
+                            }
+                        },
+                        {
+                            "pypi": {
+                                "package": "pytest-cov"
+                            }
+                        }
+                    ]
+                },
+                {
+                    "task_key": "execute_test_7_of_10",
+                    "description": "Extracts session data from events",
+                    "depends_on": [],
+                    "job_cluster_key": "default_cluster",
+                    "spark_python_task": {
+                        "python_file": "dbfs:'"$(TEST_CODE_PATH_ON_DBFS)"'/'"${PIPELINE_ID}"'/'"${{ parameters.test_runner_path }}"'",
+                        "parameters": [
+                            "dbfs:'"$(TEST_CODE_PATH_ON_DBFS)"'/'"${PIPELINE_ID}"'",
+                            "'"$(TARGET_TEST_PATH)"'",
+                            "'"${{ parameters.test_results_path }}"'",
+                            "true",
+                            "10",
+                            "7",
+                            "'"${{ parameters.job_suffix_name }}"'"
+                        ]
+                    },
+                    "timeout_seconds": 86400,
+                    "libraries": [
+                        {
+                            "pypi": {
+                                "package": "pytest"
+                            }
+                        },
+                        {
+                            "pypi": {
+                                "package": "pytest-cov"
+                            }
+                        }
+                    ]
+                },
+                {
+                    "task_key": "execute_test_8_of_10",
+                    "description": "Extracts session data from events",
+                    "depends_on": [],
+                    "job_cluster_key": "default_cluster",
+                    "spark_python_task": {
+                        "python_file": "dbfs:'"$(TEST_CODE_PATH_ON_DBFS)"'/'"${PIPELINE_ID}"'/'"${{ parameters.test_runner_path }}"'",
+                        "parameters": [
+                            "dbfs:'"$(TEST_CODE_PATH_ON_DBFS)"'/'"${PIPELINE_ID}"'",
+                            "'"$(TARGET_TEST_PATH)"'",
+                            "'"${{ parameters.test_results_path }}"'",
+                            "true",
+                            "10",
+                            "8",
+                            "'"${{ parameters.job_suffix_name }}"'"
+                        ]
+                    },
+                    "timeout_seconds": 86400,
+                    "libraries": [
+                        {
+                            "pypi": {
+                                "package": "pytest"
+                            }
+                        },
+                        {
+                            "pypi": {
+                                "package": "pytest-cov"
+                            }
+                        }
+                    ]
+                },
+                {
+                    "task_key": "execute_test_9_of_10",
+                    "description": "Extracts session data from events",
+                    "depends_on": [],
+                    "job_cluster_key": "default_cluster",
+                    "spark_python_task": {
+                        "python_file": "dbfs:'"$(TEST_CODE_PATH_ON_DBFS)"'/'"${PIPELINE_ID}"'/'"${{ parameters.test_runner_path }}"'",
+                        "parameters": [
+                            "dbfs:'"$(TEST_CODE_PATH_ON_DBFS)"'/'"${PIPELINE_ID}"'",
+                            "'"$(TARGET_TEST_PATH)"'",
+                            "'"${{ parameters.test_results_path }}"'",
+                            "true",
+                            "10",
+                            "9",
+                            "'"${{ parameters.job_suffix_name }}"'"
+                        ]
+                    },
+                    "timeout_seconds": 86400,
+                    "libraries": [
+                        {
+                            "pypi": {
+                                "package": "pytest"
+                            }
+                        },
+                        {
+                            "pypi": {
+                                "package": "pytest-cov"
+                            }
+                        }
+                    ]
+                },
+                {
+                    "task_key": "execute_test_10_of_10",
+                    "description": "Extracts session data from events",
+                    "depends_on": [],
+                    "job_cluster_key": "default_cluster",
+                    "spark_python_task": {
+                        "python_file": "dbfs:'"$(TEST_CODE_PATH_ON_DBFS)"'/'"${PIPELINE_ID}"'/'"${{ parameters.test_runner_path }}"'",
+                        "parameters": [
+                            "dbfs:'"$(TEST_CODE_PATH_ON_DBFS)"'/'"${PIPELINE_ID}"'",
+                            "'"$(TARGET_TEST_PATH)"'",
+                            "'"${{ parameters.test_results_path }}"'",
+                            "true",
+                            "10",
+                            "10",
+                            "'"${{ parameters.job_suffix_name }}"'"
+                        ]
+                    },
+                    "timeout_seconds": 86400,
+                    "libraries": [
+                        {
+                            "pypi": {
+                                "package": "pytest"
+                            }
+                        },
+                        {
+                            "pypi": {
+                                "package": "pytest-cov"
+                            }
+                        }
+                    ]
+                }
+            ]
+            }' \
+            )
+            echo $executed_results
+            executed_job_id=$( echo $executed_results | jq -r .job_id )
+            echo "Databricks JOB ID:" $executed_job_id
+            echo "##vso[task.setvariable variable=databricks_job_id;isOutput=true;]$executed_job_id"
+            executed_run_id=$(curl -X POST $(DATABRICKS_WORKSPACE_URL)/api/2.1/jobs/run-now \
+            -H 'Content-Type: application/json' \
+            -H 'Authorization: Bearer $(DATABRICKS_TOKEN)' \
+            -d '{
+            "job_id": '"${executed_job_id}"'
+            }' \
+            | jq -r .run_id \
+            )
+            echo "Databricks RUN ID:" $executed_run_id
+            if [ $executed_run_id = null ]; then
+                echo "##vso[task.LogIssue type=error;]The test workflow has not executed."
+                echo "##vso[task.complete result=Failed;]"
+                DATABRICKS_WORKFLOW_COMPLETED_STATUS="true"
+            fi
+            echo "##vso[task.setvariable variable=databricks_run_id;isOutput=true;]$executed_run_id"
+

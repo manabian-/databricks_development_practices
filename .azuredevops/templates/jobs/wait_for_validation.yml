@@ -1,0 +1,25 @@
+parameters:
+- name: mailaddress_for_ManualValidation
+  type: string
+  default: |
+    $(mailaddress_01)
+    $(mailaddress_02)
+    $(mailaddress_03)
+    $(mailaddress_04)
+    $(mailaddress_05)
+
+stages: 
+- stage: waitForValidation
+  jobs:
+  - job: waitForValidation
+    displayName: Wait for external validation
+    pool: server
+    timeoutInMinutes: 4320 # job times out in 3 days
+    steps:
+    - task: ManualValidation@0
+      timeoutInMinutes: 1440 # task times out in 1 day
+      inputs:
+        notifyUsers: |
+          ${{ parameters.mailaddress_for_ManualValidation }}
+        instructions: 'Please validate the build configuration and resume'
+        onTimeout: 'Reject'
