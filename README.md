@@ -1,11 +1,11 @@
-# Databricks DevOps with Azure DevOps 
+# Development practices for Databricks with Azure DevOps 
 
-A repository for explaining how to develop with DevOps in mind on Databricks.
+A repository for explaining DevOps for Databricks.
 
-Databricks における DevOps を考慮した開発方法を説明。
+DevOps を考慮した Databricks の開発方法を説明。
 
 # Licence
 
-Because it is shared for information sharing purposes, commercial use is prohibited.
+Commercial use is prohibited, because it is shared for information sharing purposes.
 
 情報共有目的での共有であるため、商用利用は禁止です。
