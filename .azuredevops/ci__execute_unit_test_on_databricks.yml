@@ -21,7 +21,7 @@ variables:
 # - name: TARGET_TEST_PATH
 #   value: tests/unit
 # - name: TEST_MAIN_NOTEBOOK_PATH
-#   value: tests/samples/main__ut__v1
+#   value: tests/unit/main__ut__v1
 
 stages:
   - stage: CreateDatabrickRepos
